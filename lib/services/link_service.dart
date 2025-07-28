@@ -110,7 +110,7 @@ class DeepLink {
 
     if (response.statusCode == 201) {
       final json = jsonDecode(response.body);
-      return LinkModel.fromJson(json);
+      return LinkModel.fromMap(json);
     } else {
       throw Exception('Erro ao criar link: ${response.body}');
     }
@@ -139,7 +139,7 @@ class DeepLink {
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
-      return LinkModel.fromJson(json);
+      return LinkModel.fromMap(json);
     } else if (response.statusCode == 404) {
       throw Exception('Link não encontrado');
     } else {

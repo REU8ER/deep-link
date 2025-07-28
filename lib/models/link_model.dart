@@ -1,10 +1,13 @@
 class LinkModel {
-  final String slug;
-  final String? titulo;
-  final String? descricao;
-  final String? urlImage;
-  final Map<String, String>? parametrosPersonalizados;
-  final bool? onlyWeb;
+  late String slug;
+  String? titulo;
+  String? descricao;
+  String? urlImage;
+  Map<String, String>? parametrosPersonalizados;
+  bool? onlyWeb;
+
+  String? _link;
+  String? get link => _link ?? '';
 
   LinkModel({
     required this.slug,
@@ -15,17 +18,16 @@ class LinkModel {
     this.onlyWeb,
   });
 
-  factory LinkModel.fromJson(Map<String, dynamic> json) {
-    return LinkModel(
-      slug: json['slug'],
-      titulo: json['titulo'],
-      descricao: json['descricao'],
-      urlImage: json['urlImage'],
-      parametrosPersonalizados: (json['parametrosPersonalizados'] as Map?)?.map(
-        (k, v) => MapEntry(k.toString(), v.toString()),
-      ),
-      onlyWeb: json['onlyWeb'] ?? false,
+  LinkModel.fromMap(Map<String, dynamic> map) {
+    slug = map['slug'];
+    titulo = map['titulo'];
+    descricao = map['descricao'];
+    urlImage = map['urlImage'];
+    parametrosPersonalizados = (map['parametrosPersonalizados'] as Map?)?.map(
+      (k, v) => MapEntry(k.toString(), v.toString()),
     );
+    onlyWeb = map['onlyWeb'] ?? false;
+    _link = map['link'];
   }
 
   Map<String, dynamic> toJson() {

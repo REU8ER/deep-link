@@ -1,5 +1,3 @@
-library deep_link;
-
 export 'models/link_model.dart';
 export 'services/link_service.dart';
-export 'deep_link_handler.dart';
+export 'deep_link.dart';

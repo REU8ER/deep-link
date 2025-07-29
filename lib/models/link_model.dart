@@ -3,6 +3,7 @@ class LinkModel {
   String? titulo;
   String? descricao;
   String? urlImage;
+  String? appPath;
   Map<String, String>? parametrosPersonalizados;
   bool? onlyWeb;
 
@@ -15,6 +16,7 @@ class LinkModel {
     this.descricao,
     this.urlImage,
     this.parametrosPersonalizados,
+    this.appPath,
     this.onlyWeb,
   });
 
@@ -26,6 +28,7 @@ class LinkModel {
     parametrosPersonalizados = (map['parametrosPersonalizados'] as Map?)?.map(
       (k, v) => MapEntry(k.toString(), v.toString()),
     );
+    appPath = map['appPath'];
     onlyWeb = map['onlyWeb'] ?? false;
     _link = map['link'];
   }
@@ -37,6 +40,7 @@ class LinkModel {
       'descricao': descricao,
       'urlImage': urlImage,
       'parametrosPersonalizados': parametrosPersonalizados,
+      'appPath': appPath,
       'onlyWeb': onlyWeb,
     };
   }

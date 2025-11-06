@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/link_model.dart';
 
@@ -13,8 +14,8 @@ class DeepLink {
 
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _sub;
-  static String? _token;
   static late String _baseUrl;
+  static String? _apiToken;
 
   /// Cancela a assinatura do stream de links.
   /// Chame este método quando não precisar mais ouvir os links.
@@ -25,85 +26,188 @@ class DeepLink {
   /// ```
   void dispose() => _sub?.cancel();
 
-  /// Chame este método para inicializar o DeepLink com o token e a URL base.
-  /// Antes de chamar qualquer outro método do DeepLink, você deve chamar este método.
-  /// O token é usado para autenticação nas requisições.
-  /// A URL base é usada para construir as URLs das APIs.
-  /// Exemplo de uso:
-  /// ```dart
-  /// await DeepLink.init(
-  ///   token: 'seuTokenAqui',
-  ///   baseUrl: 'https://seu-servidor.com',
-  /// );
-  /// ```
-  static void init({required String token, required String baseUrl}) {
+  static void init({required String baseUrl, required String apiToken}) {
     if (baseUrl.isEmpty) {
       throw Exception('Base URL não pode ser vazia');
     }
-    if (token.isEmpty) {
-      throw Exception('Token não pode ser vazio');
+    if (apiToken.isEmpty) {
+      throw Exception('API Token não pode ser vazio');
     }
 
-    _token = token;
     _baseUrl = baseUrl;
+    _apiToken = apiToken;
   }
 
-  /// Um stream que emite eventos quando um link é aberto.
-  /// Você pode ouvir este stream para receber os dados do link.
-  /// Exemplo de uso:
-  /// ```dart
-  /// DeepLink().listen((linkData) {
-  ///   print('Link recebido: ${linkData.slug}');
-  /// });
-  /// ```
-  /// Certifique-se de chamar DeepLink.init(token, urlBase) antes de usar este método.
   void listen(void Function(LinkModel) onLinkData) {
-    if (_token == null) {
-      throw Exception(
-        'Token não inicializado. Chame DeepLink.init(token, urlBase) primeiro.',
-      );
-    }
     _sub = _appLinks.uriLinkStream.listen((uri) async {
-      final slug = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
-      if (slug.isNotEmpty) {
-        final data = await DeepLink.getLink(slug);
-        onLinkData(data);
+      debugPrint('Received deep link: $uri');
+
+      try {
+        final linkData = await _parseLinkFromUri(uri);
+        if (linkData != null) {
+          onLinkData(linkData);
+        }
+      } catch (e) {
+        debugPrint('Erro ao processar deep link: $e');
       }
     });
   }
 
-  /// Verifica se há um link inicial e chama o callback com os dados do link.
   Future<void> checkInitialLink(void Function(LinkModel) onLinkData) async {
-    if (_token == null) {
-      throw Exception(
-        'Token não inicializado. Chame DeepLink.init(token, urlBase) primeiro.',
-      );
-    }
     final initial = await _appLinks.getInitialLink();
     if (initial != null) {
-      final slug = initial.pathSegments.isNotEmpty
-          ? initial.pathSegments.last
-          : '';
-      if (slug.isNotEmpty) {
-        final data = await DeepLink.getLink(slug);
-        onLinkData(data);
+      debugPrint('Initial deep link: $initial');
+
+      try {
+        final linkData = await _parseLinkFromUri(initial);
+        if (linkData != null) {
+          onLinkData(linkData);
+        }
+      } catch (e) {
+        debugPrint('Erro ao processar link inicial: $e');
       }
     }
   }
 
-  /// Cria um novo link com os dados fornecidos.
+  static Future<LinkModel?> _parseLinkFromUri(Uri uri) async {
+    // Caso 1: HTTPS deep link (https://dominio/prefixo/slug)
+    if (uri.scheme == 'https' || uri.scheme == 'http') {
+      return await _parseHttpsLink(uri);
+    }
+
+    // Caso 2: Custom scheme (myapp://id ou myapp://link/id)
+    if (uri.scheme != 'https' && uri.scheme != 'http') {
+      return await _parseCustomSchemeLink(uri);
+    }
+
+    return null;
+  }
+
+  static Future<LinkModel?> _parseHttpsLink(Uri uri) async {
+    final dominio = uri.host;
+    final segments = uri.pathSegments;
+
+    String prefixo = '';
+    String slug = '';
+
+    if (segments.length == 1) {
+      slug = segments[0];
+    } else if (segments.length >= 2) {
+      prefixo = segments[0];
+      slug = segments[1];
+    }
+
+    if (slug.isEmpty) return null;
+
+    final id = '$dominio~-$prefixo~-$slug';
+
+    try {
+      return await DeepLink.getLink(id);
+    } catch (e) {
+      debugPrint('Erro ao buscar link por ID: $e');
+      return null;
+    }
+  }
+
+  static Future<LinkModel?> _parseCustomSchemeLink(Uri uri) async {
+    // Scheme formato: myapp://link/dominio~-prefixo~-slug
+    // ou: myapp://dominio~-prefixo~-slug
+    // ou: myapp://abrir?id=dominio~-prefixo~-slug&appPath=produto/123
+
+    debugPrint('Parsing custom scheme: ${uri.scheme}://${uri.host}${uri.path}');
+
+    // Opção 1: ID no path (myapp://link/dominio~-prefixo~-slug)
+    if (uri.pathSegments.isNotEmpty) {
+      final allSegments = uri.pathSegments.join('/');
+
+      // Se o path contém ~-, é um ID
+      if (allSegments.contains('~-')) {
+        final id = allSegments;
+        try {
+          return await DeepLink.getLink(id);
+        } catch (e) {
+          debugPrint('Erro ao buscar link por ID do scheme: $e');
+        }
+      }
+    }
+
+    // Opção 2: ID no host (myapp://dominio~-prefixo~-slug)
+    if (uri.host.contains('~-')) {
+      final id = uri.host;
+      try {
+        return await DeepLink.getLink(id);
+      } catch (e) {
+        debugPrint('Erro ao buscar link por ID no host: $e');
+      }
+    }
+
+    // Opção 3: Query params (fallback offline)
+    // myapp://abrir?id=xxx&appPath=produto/123&titulo=Produto
+    if (uri.queryParameters.isNotEmpty) {
+      return _createLinkFromQueryParams(uri.queryParameters);
+    }
+
+    return null;
+  }
+
+  static Future<LinkModel?> _createLinkFromQueryParams(
+    Map<String, String> params,
+  ) async {
+    final id = params['id'];
+
+    if (id != null && id.contains('~-')) {
+      final parts = id.split('~-');
+
+      final prefixo = parts.length == 3 ? parts[1] : null;
+      final slug = parts.length == 3 ? parts[2] : parts[1];
+
+      if (parts.length >= 2) {
+        try {
+          return await DeepLink.getLink(id);
+        } catch (e) {
+          debugPrint('Erro ao buscar link por ID no query: $e');
+        }
+
+        return LinkModel(
+          id: id,
+          dominio: parts[0],
+          prefixo: prefixo,
+          slug: slug,
+          titulo: params['titulo'],
+          descricao: params['descricao'],
+          appPath: params['appPath'],
+          scheme: params['scheme'],
+          urlDesktop: params['urlDesktop'],
+        );
+      }
+    }
+
+    return null;
+  }
+
   static Future<LinkModel> createLink(LinkModel link) async {
-    if (_token == null) {
+    if (_apiToken == null || _apiToken!.isEmpty) {
       throw Exception(
-        'Token não inicializado. Chame DeepLink.init(token, urlBase) primeiro.',
+        'Token não inicializado. Chame DeepLink.init(baseUrl, apiToken) primeiro.',
       );
     }
+
+    if (link.dominio.isEmpty) {
+      throw Exception('Campo obrigatório: dominio');
+    }
+    if (link.slug.isEmpty) {
+      throw Exception('Campo obrigatório: slug');
+    }
+    if (link.titulo == null || link.titulo!.isEmpty) {
+      throw Exception('Campo obrigatório: titulo');
+    }
+
     final url = Uri.parse('$_baseUrl/api/links');
     final response = await http.post(
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_token',
+        'Authorization': 'Bearer $_apiToken',
       },
       body: jsonEncode(link.toJson()),
     );
@@ -111,29 +215,16 @@ class DeepLink {
     if (response.statusCode == 201) {
       final json = jsonDecode(response.body);
       return LinkModel.fromMap(json);
+    } else if (response.statusCode == 401) {
+      throw Exception('Token de autenticação inválido ou expirado');
+    } else if (response.statusCode == 403) {
+      throw Exception('Permissão negada para criar link neste domínio');
     } else {
       throw Exception('Erro ao criar link: ${response.body}');
     }
   }
 
-  /// Retorna os dados de um link existente pelo ID (dominio.com=slug).
-  /// Se o link não for encontrado, lança uma exceção.
-  /// Se o link for encontrado, retorna um objeto LinkModel.
-  /// Exemplo de uso:
-  /// ```dart
-  /// try {
-  ///   final link = await DeepLink.getLink('seu_slug_aqui');
-  ///   print('Link encontrado: ${link.titulo}');
-  /// } catch (e) {
-  ///   print('Erro ao buscar link: $e');
-  /// }
-  /// ```
   static Future<LinkModel> getLink(String id) async {
-    if (_token == null) {
-      throw Exception(
-        'Token não inicializado. Chame DeepLink.init(token, urlBase) primeiro.',
-      );
-    }
     final url = Uri.parse('$_baseUrl/api/links/$id');
     final response = await http.get(url);
 

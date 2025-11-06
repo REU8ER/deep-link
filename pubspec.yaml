@@ -1,18 +1,18 @@
 name: deep_link
-description: "A new Flutter package project."
-version: 0.0.3
+description: "Flutter package para gerenciamento de deep links com integração a API backend para criar, buscar e escutar links dinâmicos."
+version: 0.0.4
 homepage:
 
 environment:
   sdk: ^3.8.1
-  flutter: ">=1.17.0"
+  flutter: ">=3.32.6"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  http: ^1.4.0
-  app_links: ^6.4.0
+  http: ^1.5.0
+  app_links: ^6.4.1
 
 dev_dependencies:
   flutter_test:

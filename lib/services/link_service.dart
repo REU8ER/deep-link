@@ -237,4 +237,21 @@ class DeepLink {
       throw Exception('Erro ao buscar link: ${response.body}');
     }
   }
+
+  static Future<String> getIdLinkFromUri(Uri uri) async {
+    final domain = uri.queryParameters['domain'] ?? uri.host;
+
+    final pathList = uri.pathSegments;
+    final path = pathList.length == 1
+        ? '~-~-${pathList.first}'
+        : uri.path.replaceAll('/', '~-');
+    return '$domain$path';
+  }
+
+  static Future<Map<String, String>?> getQueryParametersFromUri(Uri uri) async {
+    final querys = Map<String, String>.from(uri.queryParameters);
+    querys.remove('domain');
+
+    return querys.isEmpty ? null : querys;
+  }
 }

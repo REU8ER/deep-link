@@ -238,7 +238,7 @@ class DeepLink {
     }
   }
 
-  static Future<String> getIdLinkFromUri(Uri uri) async {
+  static String getIdLinkFromUri(Uri uri) {
     final domain = uri.queryParameters['domain'] ?? uri.host;
 
     final pathList = uri.pathSegments;
@@ -248,7 +248,7 @@ class DeepLink {
     return '$domain$path';
   }
 
-  static Future<Map<String, String>?> getQueryParametersFromUri(Uri uri) async {
+  static Map<String, String>? getQueryParametersFromUri(Uri uri) {
     final querys = Map<String, String>.from(uri.queryParameters);
     querys.remove('domain');
 

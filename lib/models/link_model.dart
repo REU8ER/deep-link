@@ -22,6 +22,16 @@ class LinkModel {
   bool onlyWeb;
   late ComportamentoLink comportamento;
 
+  /// Retorna a URL completa e acessível do deep link
+  /// Exemplo: https://exemplo.com/p/produto-123
+  /// Se não houver prefixo: https://exemplo.com/produto-123
+  String get link {
+    final path = prefixo != null && prefixo!.isNotEmpty
+        ? '$prefixo/$slug'
+        : slug;
+    return 'https://$dominio/$path';
+  }
+
   LinkModel({
     this.id,
     required this.dominio,

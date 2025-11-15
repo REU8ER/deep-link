@@ -238,6 +238,29 @@ class DeepLink {
     }
   }
 
+  /// Extrai o ID do link a partir de uma URI.
+  ///
+  /// O ID segue o formato: `dominio~-prefixo~-slug`
+  ///
+  /// **Exemplos:**
+  /// ```dart
+  /// // URI: https://exemplo.com/p/produto-123
+  /// final id = DeepLink.getIdLinkFromUri(uri);
+  /// print(id); // exemplo.com~-p~-produto-123
+  ///
+  /// // URI: https://exemplo.com/produto-123
+  /// final id2 = DeepLink.getIdLinkFromUri(uri2);
+  /// print(id2); // exemplo.com~-~-produto-123
+  ///
+  /// // URI com domain no query: myapp://open?domain=exemplo.com&path=p/produto-123
+  /// final id3 = DeepLink.getIdLinkFromUri(uri3);
+  /// print(id3); // exemplo.com~-p~-produto-123
+  /// ```
+  ///
+  /// **Parâmetros:**
+  /// - `uri`: A URI do deep link a ser processada
+  ///
+  /// **Retorna:** String no formato `dominio~-prefixo~-slug` ou `dominio~-~-slug` (sem prefixo)
   static String getIdLinkFromUri(Uri uri) {
     final domain = uri.queryParameters['domain'] ?? uri.host;
 
@@ -248,6 +271,33 @@ class DeepLink {
     return '$domain$path';
   }
 
+  /// Extrai os query parameters de uma URI, removendo o parâmetro 'domain'.
+  ///
+  /// Útil para capturar parâmetros personalizados como UTM tags, IDs de rastreamento,
+  /// ou qualquer informação adicional passada na URL.
+  ///
+  /// **Exemplos:**
+  /// ```dart
+  /// // URI: https://exemplo.com/p/produto?utm_source=app&promo_id=black-friday
+  /// final params = DeepLink.getQueryParametersFromUri(uri);
+  /// print(params); // {'utm_source': 'app', 'promo_id': 'black-friday'}
+  ///
+  /// // URI: myapp://open?domain=exemplo.com&id=123&utm_campaign=natal
+  /// final params2 = DeepLink.getQueryParametersFromUri(uri2);
+  /// print(params2); // {'id': '123', 'utm_campaign': 'natal'}
+  /// // Note: 'domain' foi removido
+  ///
+  /// // URI sem query params: https://exemplo.com/p/produto
+  /// final params3 = DeepLink.getQueryParametersFromUri(uri3);
+  /// print(params3); // null
+  /// ```
+  ///
+  /// **Parâmetros:**
+  /// - `uri`: A URI do deep link a ser processada
+  ///
+  /// **Retorna:**
+  /// - `Map<String, String>` contendo os query parameters (exceto 'domain')
+  /// - `null` se não houver query parameters
   static Map<String, String>? getQueryParametersFromUri(Uri uri) {
     final querys = Map<String, String>.from(uri.queryParameters);
     querys.remove('domain');

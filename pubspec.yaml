@@ -1,6 +1,6 @@
 name: deep_link
 description: "Flutter package para gerenciamento de deep links com integração a API backend para criar, buscar e escutar links dinâmicos."
-version: 0.0.4
+version: 0.0.5
 homepage:
 
 environment:
